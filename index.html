@@ -58,7 +58,7 @@
         }
 
         .cell.checked {
-            background-color: #43b581 !important; /* Green background */
+            background-color: #43b581 !important;
             border-color: #ffffff !important;
             color: #ffffff !important;
         }
@@ -74,7 +74,6 @@
             cursor: pointer;
         }
 
-        /* Animated Win Modal Style */
         .win-modal { 
             position: fixed; 
             top: 50%; 
@@ -108,7 +107,6 @@
     </div>
 
     <script>
-        // --- CONFIGURATION ---
         const SUPABASE_URL = 'https://pnfllefrnqrjsaplsddt.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_ahC1-b8OguVSTo-1xkWn9w_kIlZ3rl1';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -132,9 +130,6 @@
         function renderGrid(board) {
             const grid = document.getElementById('bingo-grid');
             grid.innerHTML = '';
-            const countDisplay = document.getElementById('bingo-count');
-            if (countDisplay) { countDisplay.innerText = checkWin(board.progress); }
-
             board.board_items.forEach((item, i) => {
                 const cell = document.createElement('div');
                 cell.className = 'cell' + (board.progress[i] ? ' checked' : '');
@@ -153,15 +148,14 @@
                 confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
                 if (board.progress.every(v => v === true)) {
                     showWin("BLACKOUT!", "https://cdn.discordapp.com/emojis/1460767581303738713.gif");
-                } 
-                else if (linesAfter > linesBefore) {
+                } else if (linesAfter > linesBefore) {
                     showWin("BINGO!", "https://cdn.discordapp.com/emojis/1460767512034808000.png");
                 }
             }
             await sb.from('bingo_boards').update({ progress: board.progress }).eq('id', board.id);
             renderGrid(board);
         }
-}
+
         async function loadBoard(userId) {
             let { data: board } = await sb.from('bingo_boards').select('*').eq('user_id', userId).single();
             if (!board) {
@@ -182,11 +176,6 @@
                 loadBoard(session.user.id);
             }
         }
-
-        // --- ADDED MISSING LOGIN LISTENER ---
-        document.getElementById('login-btn')?.addEventListener('click', () => {
-            sb.auth.signInWithOAuth({ provider: 'discord' });
-        });
 
         init();
     </script>
