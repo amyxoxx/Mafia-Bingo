@@ -161,7 +161,17 @@
             await sb.from('bingo_boards').update({ progress: board.progress }).eq('id', board.id);
             renderGrid(board);
         }
-
+        
+async function loadBoard(userId) {
+    let { data: board } = await sb.from('bingo_boards').select('*').eq('user_id', userId).single();
+    if (!board) {
+        const pick = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+        const combined = [...pick(villageItems, 5), ...pick(mafiaItems, 2), ...pick(neutralItems, 2)].sort(() => 0.5 - Math.random());
+        const { data: newBoard } = await sb.from('bingo_boards').insert([{ user_id: userId, board_items: combined, progress: new Array(9).fill(false) }]).select().single();
+        board = newBoard;
+    }
+    renderGrid(board);
+}
         // --- ADDED MISSING LOADBOARD FUNCTION ---
         async function loadBoard(userId) {
             let { data: board } = await sb.from('bingo_boards').select('*').eq('user_id', userId).single();
