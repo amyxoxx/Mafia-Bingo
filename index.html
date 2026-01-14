@@ -162,7 +162,6 @@
             renderGrid(board);
         }
 }
-        // --- ADDED MISSING LOADBOARD FUNCTION ---
         async function loadBoard(userId) {
             let { data: board } = await sb.from('bingo_boards').select('*').eq('user_id', userId).single();
             if (!board) {
