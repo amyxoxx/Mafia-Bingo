@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mafia Bingo</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root { --d-blue: #5865f2; --d-dark: #36393f; --d-grid: #2f3136; }
+        
+        body { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            background-color: #36393f; 
+            color: #ffffff; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+            margin: 0; 
+        }
+
+        h1 { display: flex; align-items: center; gap: 10px; color: #ffffff; margin-bottom: 20px; }
+        
+        #login-section, #game-section { width: 100%; max-width: 600px; text-align: center; }
+        .hidden { display: none; }
+
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 12px; 
+            margin-top: 20px; 
+            width: 100%;
+        }
+
+        .cell {
+            background: #2f3136;
+            border: 1px solid #4f545c;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 120px;
+            height: auto;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #dcddde;
+            transition: 0.2s;
+        }
+
+        .cell b {
+            color: #ffffff;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .cell.checked {
+            background-color: #43b581 !important; /* Green background */
+            border-color: #ffffff !important;
+            color: #ffffff !important;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Animated Win Modal Style */
+        .win-modal { 
+            position: fixed; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: #2f3136; 
+            border: 2px solid #5865f2; 
+            padding: 30px; 
+            border-radius: 15px; 
+            text-align: center; 
+            z-index: 1000; 
+            box-shadow: 0 0 30px rgba(0,0,0,0.7); 
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <h1><img src="https://cdn.discordapp.com/emojis/1460011689603895506.png" style="height: 40px;"> Mafia Bingo</h1>
+
+    <div id="login-section">
+        <p>Join the community game!</p>
+        <button id="login-btn">Login with Discord</button>
+    </div>
+
+    <div id="game-section" class="hidden">
+        <p id="user-welcome"></p>
+        <div id="bingo-grid" class="grid"></div>
+        <br>
+        <button onclick="sb.auth.signOut().then(() => location.reload())" style="background: #f04747;">Logout</button>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const SUPABASE_URL = 'https://pnfllefrnqrjsaplsddt.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_ahC1-b8OguVSTo-1xkWn9w_kIlZ3rl1';
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const villageItems = ["<b>Detective:</b> Get 3 BGT in one game", "<b>Distractor:</b> Successfully distract a mafia member who is not the Godfather", "<b>Doctor:</b> Save 2 people in one game", "<b>Duskweaver:</b> Successfully have a Mafia member voted out after staying awake", "<b>Gambler:</b> Have 2 consecutive rolls be successful", "<b>Guardian:</b> Kill 2 players by protecting 2 players", "<b>Judge:</b> Prosecute 2 mafia members", "<b>Lawyer:</b> Save a village member from being voted out", "<b>Link:</b> Link a mafia member night 1", "<b>Manager:</b> Successfully hand out 3 manages to village", "<b>Mayor:</b> Survive all game after revealing night 1", "<b>Mortician:</b> Find 2 mafia on a body", "<b>Oracle:</b> Save someone from dying by making them invisible", "<b>Pi:</b> Get 2 not same side in a row (must compare at least 3 different people)", "<b>Spy:</b> Successfully see a mafia visit", "<b>Watcher:</b> See 2 people visit your target", "<b>Vigilante:</b> Successfully shoot 2 mafia"];
+        const mafiaItems = ["<b>Blackmailer:</b> Successfully blackmail 3 different people", "<b>Hacker:</b> Hack a village and neutral role", "<b>Harbinger:</b> Successfully kill 2 players", "<b>Framer:</b> Frame a player and get them on the stand", "<b>Godfather:</b> Kill a village role with limited uses before they are able to use them", "<b>Goose:</b> Goose someone to a mafia member", "<b>Manipulator:</b> Manipulate the votes and get a village member out", "<b>Mimic:</b> Successfully alter village information", "<b>Necromancer:</b> Raise 2 roles and use their ability", "<b>Politician:</b> Poli an unknown role", "<b>Ritualist:</b> Ritual 2 roles", "<b>Silencer:</b> Silence 3 roles"];
+        const neutralItems = ["<b>Baker:</b> Hand out protection and distraction bread", "<b>Baiter:</b> Have 2 visitors in one night", "<b>Bomber:</b> Explode at least 3 people in one night", "<b>Cupid:</b> Have your couple be mafia and neutral", "<b>Doomsayer:</b> Transform into War", "<b>Executioner:</b> Get your target lynched", "<b>Hoarder:</b> Be successful 2 nights in a row", "<b>Isekai:</b> Transform and win", "<b>Jester:</b> Get hung by the end of day 4", "<b>Magician:</b> Swap 2 players and be the cause of someone's death", "<b>Plague Doctor:</b> Infect 3 or more players on night 1", "<b>Santa:</b> Prevent someone trying to visit your good child", "<b>Shaman:</b> Have someone attack you and their effects be transferred to your doll", "<b>Starspawn:</b> Save a mafia from being killed by making them invisible", "<b>Submissor:</b> Get claimed and win with that team", "<b>Thief:</b> Absorb and use an ability", "<b>Alchemist:</b> Use truth potion to find a different sided player"];
+
+        function showWin(msg, img) {
+            const div = document.createElement('div');
+            div.className = "win-modal";
+            div.innerHTML = `<img src="${img}" style="height:80px;"><br><h2>${msg}</h2><button onclick="this.parentElement.remove()">GG!</button>`;
+            document.body.appendChild(div);
+        }
+
+        function checkWin(p) {
+            const wins = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]];
+            return wins.filter(w => w.every(i => p[i])).length;
+        }
+
+        function renderGrid(board) {
+            const grid = document.getElementById('bingo-grid');
+            grid.innerHTML = '';
+            const countDisplay = document.getElementById('bingo-count');
+            if (countDisplay) { countDisplay.innerText = checkWin(board.progress); }
+
+            board.board_items.forEach((item, i) => {
+                const cell = document.createElement('div');
+                cell.className = 'cell' + (board.progress[i] ? ' checked' : '');
+                cell.innerHTML = item;
+                cell.onclick = () => toggleCell(board, i);
+                grid.appendChild(cell);
+            });
+        }
+
+        async function toggleCell(board, index) {
+            const linesBefore = checkWin(board.progress);
+            board.progress[index] = !board.progress[index];
+            const linesAfter = checkWin(board.progress);
+
+            if (board.progress[index]) {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                if (board.progress.every(v => v === true)) {
+                    showWin("BLACKOUT!", "https://cdn.discordapp.com/emojis/1460767581303738713.gif");
+                } 
+                else if (linesAfter > linesBefore) {
+                    showWin("BINGO!", "https://cdn.discordapp.com/emojis/1460767512034808000.png");
+                }
+            }
+            await sb.from('bingo_boards').update({ progress: board.progress }).eq('id', board.id);
+            renderGrid(board);
+        }
+
+        // --- ADDED MISSING LOADBOARD FUNCTION ---
+        async function loadBoard(userId) {
+            let { data: board } = await sb.from('bingo_boards').select('*').eq('user_id', userId).single();
+            if (!board) {
+                const pick = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+                const combined = [...pick(villageItems, 5), ...pick(mafiaItems, 2), ...pick(neutralItems, 2)].sort(() => 0.5 - Math.random());
+                const { data: newBoard } = await sb.from('bingo_boards').insert([{ user_id: userId, board_items: combined, progress: new Array(9).fill(false) }]).select().single();
+                board = newBoard;
+            }
+            renderGrid(board);
+        }
+
+        async function init() {
+            const { data: { session } } = await sb.auth.getSession();
+            if (session) {
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('game-section').classList.remove('hidden');
+                document.getElementById('user-welcome').innerText = "Playing as: " + session.user.user_metadata.full_name;
+                loadBoard(session.user.id);
+            }
+        }
+
+        // --- ADDED MISSING LOGIN LISTENER ---
+        document.getElementById('login-btn')?.addEventListener('click', () => {
+            sb.auth.signInWithOAuth({ provider: 'discord' });
+        });
+
+        init();
+    </script>
+</body>
+</html>
