@@ -96,7 +96,10 @@
 
     <div id="login-section">
         <p>Join the community game!</p>
-        <button id="login-btn" onclick="sb.auth.signInWithOAuth({ provider: 'discord' })">Login with Discord</button>
+        <button id="login-btn" onclick="sb.auth.signInWithOAuth({ 
+  provider: 'discord',
+  options: { redirectTo: 'https://amyxoxx.github.io/Mafia-Bingo/' }
+})">Login with Discord</button>
     </div>
 
     <div id="game-section" class="hidden">
