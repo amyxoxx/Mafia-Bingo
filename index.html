@@ -8,86 +8,16 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { --d-blue: #5865f2; --d-dark: #36393f; --d-grid: #2f3136; }
-        
-        body { 
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-            background-color: #36393f; 
-            color: #ffffff; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 20px; 
-            margin: 0; 
-        }
-
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #36393f; color: #ffffff; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
         h1 { display: flex; align-items: center; gap: 10px; color: #ffffff; margin-bottom: 20px; }
-        
         #login-section, #game-section { width: 100%; max-width: 600px; text-align: center; }
         .hidden { display: none; }
-
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 12px; 
-            margin-top: 20px; 
-            width: 100%;
-        }
-
-        .cell {
-            background: #2f3136;
-            border: 1px solid #4f545c;
-            border-radius: 8px;
-            padding: 15px;
-            min-height: 120px;
-            height: auto;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            font-size: 0.85rem;
-            color: #dcddde;
-            transition: 0.2s;
-        }
-
-        .cell b {
-            color: #ffffff;
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .cell.checked {
-            background-color: #43b581 !important;
-            border-color: #ffffff !important;
-            color: #ffffff !important;
-        }
-
-        button {
-            margin-top: 20px;
-            padding: 12px 24px;
-            background: #5865f2;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .win-modal { 
-            position: fixed; 
-            top: 50%; 
-            left: 50%; 
-            transform: translate(-50%, -50%); 
-            background: #2f3136; 
-            border: 2px solid #5865f2; 
-            padding: 30px; 
-            border-radius: 15px; 
-            text-align: center; 
-            z-index: 1000; 
-            box-shadow: 0 0 30px rgba(0,0,0,0.7); 
-            color: white;
-        }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; width: 100%; }
+        .cell { background: #2f3136; border: 1px solid #4f545c; border-radius: 8px; padding: 15px; min-height: 120px; height: auto; cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-size: 0.85rem; color: #dcddde; transition: 0.2s; }
+        .cell b { color: #ffffff; display: block; margin-bottom: 5px; }
+        .cell.checked { background-color: #43b581 !important; border-color: #ffffff !important; color: #ffffff !important; }
+        button { margin-top: 20px; padding: 12px 24px; background: #5865f2; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .win-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2f3136; border: 2px solid #5865f2; padding: 30px; border-radius: 15px; text-align: center; z-index: 1000; box-shadow: 0 0 30px rgba(0,0,0,0.7); color: white; }
     </style>
 </head>
 <body>
@@ -96,10 +26,7 @@
 
     <div id="login-section">
         <p>Join the community game!</p>
-        <button id="login-btn" onclick="sb.auth.signInWithOAuth({ 
-  provider: 'discord',
-  options: { redirectTo: 'https://amyxoxx.github.io/Mafia-Bingo/' }
-})">Login with Discord</button>
+        <button id="login-btn" onclick="sb.auth.signInWithOAuth({ provider: 'discord', options: { redirectTo: window.location.origin + window.location.pathname } })">Login with Discord</button>
     </div>
 
     <div id="game-section" class="hidden">
@@ -146,7 +73,6 @@
             const linesBefore = checkWin(board.progress);
             board.progress[index] = !board.progress[index];
             const linesAfter = checkWin(board.progress);
-
             if (board.progress[index]) {
                 confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
                 if (board.progress.every(v => v === true)) {
@@ -170,19 +96,26 @@
             renderGrid(board);
         }
 
-        async function init() {
-    // This part listens for the login "handshake" to finish
-    sb.auth.onAuthStateChange((event, session) => {
-        if (session) {
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('game-section').classList.remove('hidden');
-            document.getElementById('user-welcome').innerText = "Playing as: " + (session.user.user_metadata.full_name || "User");
-            loadBoard(session.user.id);
-        }
-    });
-}
+        // --- NEW LISTENER TO PREVENT RE-LOGIN LOOP ---
+        sb.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('game-section').classList.remove('hidden');
+                document.getElementById('user-welcome').innerText = "Playing as: " + (session.user.user_metadata.full_name || "User");
+                loadBoard(session.user.id);
+            }
+        });
 
-init();
+        async function checkSession() {
+            const { data: { session } } = await sb.auth.getSession();
+            if (session) {
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('game-section').classList.remove('hidden');
+                document.getElementById('user-welcome').innerText = "Playing as: " + (session.user.user_metadata.full_name || "User");
+                loadBoard(session.user.id);
+            }
+        }
+        checkSession();
     </script>
 </body>
 </html>
